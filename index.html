@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emergency Meeting</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+<style>
+body{
+  margin:0;
+  font-family:'Orbitron',sans-serif;
+  background: black;
+  color:white;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:40px 20px;
+  box-sizing:border-box;
+  overflow:auto;
+}
+.starfield, .starfield2{
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  background-repeat:repeat;
+}
+
+.starfield{
+  background-image:url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'>\
+<rect width='100%' height='100%' fill='black'/>\
+<circle cx='20' cy='40' r='1' fill='white'/>\
+<circle cx='80' cy='120' r='1' fill='white'/>\
+<circle cx='150' cy='60' r='1' fill='white'/>\
+<circle cx='200' cy='200' r='1' fill='white'/>\
+<circle cx='260' cy='80' r='1' fill='white'/>\
+<circle cx='120' cy='250' r='1' fill='white'/>\
+<circle cx='40' cy='200' r='1' fill='white'/>\
+</svg>");
+  animation:starMove 120s linear infinite;
+  opacity:.9;
+}
+
+.starfield2{
+  background-image:url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'>\
+<rect width='100%' height='100%' fill='black'/>\
+<circle cx='60' cy='90' r='2' fill='white'/>\
+<circle cx='300' cy='140' r='2' fill='white'/>\
+<circle cx='180' cy='300' r='2' fill='white'/>\
+<circle cx='350' cy='40' r='2' fill='white'/>\
+</svg>");
+  animation:starMove 220s linear infinite;
+  opacity:.5;
+}
+
+@keyframes starMove{
+  from{transform:translateY(0)}
+  to{transform:translateY(-1000px)}
+}
+
+.panel{
+  background:linear-gradient(#222a3d,#0f1422);
+  border:4px solid #4c5a7a;
+  border-radius:18px;
+  padding:30px 40px 35px;
+  box-shadow:0 0 40px rgba(0,0,0,.6);
+  text-align:center;
+  max-width:700px;
+  width:100%;
+}
+h1{margin:0;font-size:36px;letter-spacing:2px;}
+.subtitle{opacity:.7;margin-bottom:20px;font-size:16px;}
+.players{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:14px;
+  margin-top:20px;
+}
+.player{
+  border-radius:14px;
+  padding:16px;
+  border:3px solid rgba(255,255,255,.25);
+  cursor:pointer;
+  transition:.18s ease;
+  font-size:18px;
+  text-align:center;
+}
+.player:hover{
+  transform:scale(1.06);
+  border-color:white;
+  box-shadow:0 0 12px rgba(255,255,255,.5);
+}
+.crossed{
+  text-decoration:line-through;
+  opacity:0.45;
+  pointer-events:none;
+  filter:grayscale(70%);
+}
+.voteBtn{
+  margin-top:20px;
+  padding:14px 26px;
+  font-family:inherit;
+  font-size:16px;
+  border-radius:12px;
+  border:3px solid #7e8bb3;
+  background:linear-gradient(#3d4a6b,#1a2135);
+  color:white;
+  cursor:pointer;
+  transition:.18s ease;
+}
+.voteBtn:hover{
+  transform:scale(1.05);
+  box-shadow:0 0 14px rgba(255,255,255,.4);
+  border-color:white;
+}
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.75);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+}
+.popup{
+  background:linear-gradient(#2b344d,#101726);
+  border:4px solid #7e8bb3;
+  border-radius:18px;
+  padding:40px 50px;
+  text-align:center;
+  font-size:22px;
+  box-shadow:0 0 30px rgba(0,0,0,.7);
+}
+.ejection{
+  position:fixed;
+  inset:0;
+  background:black;
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  font-size:42px;
+  letter-spacing:2px;
+  text-align:center;
+  z-index:2000;
+}
+.ejection span{
+  margin-top:20px;
+  font-size:26px;
+  opacity:.8;
+}
+</style>
+</head>
+<body>
+
+<div class="starfield"></div>
+
+<div class="panel" id="mainPanel">
+  <h1>EMERGENCY MEETING</h1>
+  <div class="subtitle">Who is the Impostor?</div>
+  <div class="players" id="players"></div>
+  <button class="voteBtn" id="killBtn">Kill Player</button>
+  <button class="voteBtn" id="endBtn">End Voting</button>
+</div>
+
+<script>
+const colors = [
+  {name:"RED",color:"#C51111"},
+  {name:"BLUE",color:"#132FD2"},
+  {name:"GREEN",color:"#117F2D"},
+  {name:"YELLOW",color:"#F5F557"},
+  {name:"PINK",color:"#EC0E63"},
+  {name:"ORANGE",color:"#EF7D0D"}
+];
+
+const container = document.getElementById("players");
+let currentRound = 0;
+let hasVoted = false;
+
+/* ---------- INIT ROUND ---------- */
+async function initRound(){
+  const res = await fetch("/round");
+  const data = await res.json();
+  currentRound = data.round;
+}
+initRound();
+
+/* ---------- CREATE PLAYER CARDS ---------- */
+colors.forEach(p=>{
+  const div=document.createElement("div");
+  div.className="player";
+  div.style.background=p.color;
+  div.innerText=p.name;
+  div.onclick=()=>vote(p.name);
+  container.appendChild(div);
+});
+
+/* ---------- VOTE ---------- */
+async function vote(name){
+  if(hasVoted) return;
+  hasVoted = true;
+
+  await fetch("/vote",{
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name})
+  });
+
+  lockVotingUI();
+
+  const overlay=document.createElement("div");
+  overlay.className="overlay";
+  overlay.id="waitScreen";
+  overlay.innerHTML=`<div class="popup">Vote submitted.<br><br>Waiting for host…</div>`;
+  document.body.appendChild(overlay);
+}
+
+function lockVotingUI(){
+  document.querySelectorAll(".player").forEach(card=>{
+    card.style.pointerEvents="none";
+    card.style.opacity="0.4";
+  });
+}
+
+function unlockVotingUI(){
+  document.querySelectorAll(".player").forEach(card=>{
+    if(!card.classList.contains("crossed")){
+      card.style.pointerEvents="auto";
+      card.style.opacity="1";
+    }
+  });
+}
+
+/* ---------- HOST END VOTING ---------- */
+document.getElementById("endBtn").onclick = endVoting;
+
+async function endVoting(){
+  const res = await fetch("/reset",{method:"POST"});
+  const data = await res.json();
+
+  currentRound = data.round;
+
+  const wait=document.getElementById("waitScreen");
+  if(wait) wait.remove();
+
+  showEjectionScreen(data.lastEjected);
+  updateEjected();
+}
+
+/* ---------- EJECTION SCREEN (NO VOTE COUNT) ---------- */
+function showEjectionScreen(name){
+  const screen=document.createElement("div");
+  screen.className="ejection";
+
+  const text = !name ? "No one was ejected." : `${name} was ejected.`;
+
+  screen.innerHTML = `
+    <div id="ejectText"></div>
+    <button class="voteBtn" style="margin-top:40px" id="endMeetingBtn">END MEETING</button>
+  `;
+
+  document.body.appendChild(screen);
+
+  typeWriter(document.getElementById("ejectText"), text, 45);
+
+  document.getElementById("endMeetingBtn").onclick = () => {
+    screen.remove();
+    hasVoted = false;
+    unlockVotingUI();
+  };
+}
+
+/* ---------- UPDATE STRIKEOUTS ---------- */
+async function updateEjected(){
+  const res = await fetch("/ejected");
+  const data = await res.json();
+
+  document.querySelectorAll(".player").forEach(card=>{
+    if(data[card.innerText]){
+      card.classList.add("crossed");
+      card.style.pointerEvents="none";
+      card.style.opacity="0.45";
+    } else {
+      card.classList.remove("crossed");
+      if(!hasVoted){
+        card.style.pointerEvents="auto";
+        card.style.opacity="1";
+      }
+    }
+  });
+}
+
+/* ---------- POLLING ---------- */
+setInterval(async ()=>{
+  const r = await fetch("/round");
+  const d = await r.json();
+
+  if(d.round !== currentRound){
+    currentRound = d.round;
+    hasVoted = false;
+
+    const wait=document.getElementById("waitScreen");
+    if(wait) wait.remove();
+
+    unlockVotingUI();
+  }
+
+  updateEjected();
+}, 1500);
+
+/* ---------- KILL BUTTON: TYPE NAME & STRIKE ---------- */
+document.getElementById("killBtn").onclick = async () => {
+  const name = prompt("Enter player name to kill");
+  if(!name) return;
+
+  const upper = name.trim().toUpperCase();
+  if(!colors.find(c=>c.name === upper)) return;
+
+  const res = await fetch("/kill",{
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name: upper})
+  });
+  const data = await res.json();
+
+  showEjectionScreen(data.lastEjected);
+  updateEjected();
+};
+
+/* ---------- TYPEWRITER ---------- */
+function typeWriter(element,text,speed=40){
+  element.textContent="";
+  let i=0;
+  function t(){
+    if(i<text.length){
+      element.textContent+=text.charAt(i);
+      i++;
+      setTimeout(t,speed);
+    }
+  }
+  t();
+}
+</script>
+</body>
+</html>
