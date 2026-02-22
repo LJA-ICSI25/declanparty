@@ -146,9 +146,6 @@ h1{margin:0;font-size:32px;letter-spacing:2px}
 <div class="starfield"></div>
 <div class="starfield2"></div>
 
-<!-- ========================= -->
-<!--   SETUP SCREEN           -->
-<!-- ========================= -->
 <div class="panel" id="setupPanel">
   <h1>SELECT IMPOSTERS</h1>
   <div class="subtitle">Pick up to 3 imposters</div>
@@ -156,9 +153,6 @@ h1{margin:0;font-size:32px;letter-spacing:2px}
   <button class="voteBtn" onclick="confirmImposters()">CONFIRM</button>
 </div>
 
-<!-- ========================= -->
-<!--   MAIN DASHBOARD         -->
-<!-- ========================= -->
 <div class="panel" id="mainPanel" style="display:none;">
   <h1>ADMIN DASHBOARD</h1>
   <div class="subtitle">Pick who to vote out</div>
@@ -177,9 +171,6 @@ const colors=[
   {name:"ORANGE",color:"#EF7D0D"}
 ];
 
-/* --------------------------
-   SETUP PAGE LOGIC
---------------------------- */
 let chosenImposters = [];
 
 const setupContainer = document.getElementById("setupPlayers");
@@ -209,9 +200,6 @@ function confirmImposters(){
   document.getElementById("mainPanel").style.display="block";
 }
 
-/* --------------------------
-   MAIN DASHBOARD LOGIC
---------------------------- */
 const container=document.getElementById("players");
 let picked = null;
 
@@ -312,7 +300,6 @@ function showGameOver(title, bgColor, subtext) {
   document.body.appendChild(winScreen);
 }
 
-// Keep your existing crossOutPlayer and typeWriter functions below
 function crossOutPlayer(name){
   const cards=document.querySelectorAll(".player");
   cards.forEach(card=>{
@@ -340,4 +327,5 @@ function typeWriter(element, text, speed = 40) {
 </script>
 
 </body>
+
 </html>
