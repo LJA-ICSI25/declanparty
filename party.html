@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emergency Meeting</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+body{
+  margin:0;
+  font-family:'Orbitron',sans-serif;
+  background:black;
+  color:white;
+  min-height:100vh;
+  overflow:auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:40px 20px;
+  box-sizing:border-box;
+}
+
+/* STAR BACKGROUND */
+.starfield, .starfield2{
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  background-repeat:repeat;
+}
+
+.starfield{
+  background-image:url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'>\
+<rect width='100%' height='100%' fill='black'/>\
+<circle cx='20' cy='40' r='1' fill='white'/>\
+<circle cx='80' cy='120' r='1' fill='white'/>\
+<circle cx='150' cy='60' r='1' fill='white'/>\
+<circle cx='200' cy='200' r='1' fill='white'/>\
+<circle cx='260' cy='80' r='1' fill='white'/>\
+<circle cx='120' cy='250' r='1' fill='white'/>\
+<circle cx='350' cy='40' r='2' fill='white'/>\
+</svg>");
+}
+
+.panel{
+  background:linear-gradient(#222a3d,#0f1422);
+  border:4px solid #4c5a7a;
+  border-radius:18px;
+  padding:30px 40px 35px;
+  box-shadow:0 0 40px rgba(0,0,0,.6);
+  text-align:center;
+}
+
+h1{margin:0;font-size:32px;letter-spacing:2px}
+.subtitle{opacity:.7;margin-bottom:20px;font-size:14px}
+.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+
+.player{
+  border-radius:14px;
+  padding:16px;
+  border:3px solid rgba(255,255,255,.25);
+  cursor:pointer;
+  transition:.18s ease;
+  font-size:18px;
+}
+.player:hover{
+  transform:scale(1.06);
+  border-color:white;
+  box-shadow:0 0 12px rgba(255,255,255,.5);
+}
+
+.voteBtn{
+  margin-top:26px;
+  padding:14px 26px;
+  font-family:inherit;
+  font-size:16px;
+  border-radius:12px;
+  border:3px solid #7e8bb3;
+  background:linear-gradient(#3d4a6b,#1a2135);
+  color:white;
+  cursor:pointer;
+}
+.voteBtn:hover{
+  transform:scale(1.05);
+  box-shadow:0 0 14px rgba(255,255,255,.4);
+  border-color:white;
+}
+
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.75);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+}
+
+.popup{
+  background:linear-gradient(#2b344d,#101726);
+  border:4px solid #7e8bb3;
+  border-radius:18px;
+  padding:40px 50px;
+  text-align:center;
+  font-size:22px;
+  box-shadow:0 0 30px rgba(0,0,0,.7);
+}
+
+.ejection{
+  position:fixed;
+  inset:0;
+  background:black;
+  color:white;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  font-size:42px;
+  letter-spacing:2px;
+  text-align:center;
+  z-index:2000;
+}
+.ejection span{
+  margin-top:20px;
+  font-size:26px;
+  opacity:.8;
+}
+</style>
+</head>
+<body>
+
+<div class="starfield"></div>
+<div class="starfield2"></div>
+
+<div class="panel" id="mainPanel">
+  <h1>EMERGENCY MEETING</h1>
+  <div class="subtitle">Who is the Impostor?</div>
+  <div class="players" id="players"></div>
+  <button class="voteBtn" onclick="endVoting()">FINISH VOTING</button>
+</div>
+
+<script>
+const colors=[
+  {name:"RED",color:"#C51111"},
+  {name:"BLUE",color:"#132FD2"},
+  {name:"GREEN",color:"#117F2D"},
+  {name:"YELLOW",color:"#F5F557"},
+  {name:"PINK",color:"#EC0E63"},
+  {name:"ORANGE",color:"#EF7D0D"}
+];
+
+const container=document.getElementById("players");
+let votes=JSON.parse(localStorage.getItem("votes"))||{};
+
+// Create player cards
+colors.forEach(p=>{
+  if(!votes[p.name]) votes[p.name]=0;
+  const div=document.createElement("div");
+  div.className="player";
+  div.style.background=p.color;
+  div.innerText=p.name;
+  div.onclick=()=>vote(p.name);
+  container.appendChild(div);
+});
+
+function vote(name){
+  votes[name]++;
+  localStorage.setItem("votes",JSON.stringify(votes));
+
+  const overlay=document.createElement("div");
+  overlay.className="overlay";
+  overlay.innerHTML=`<div class="popup">You voted for ${name}<br><br><button class='voteBtn'>NEXT PLAYER</button></div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector("button").onclick=()=>overlay.remove();
+}
+
+function endVoting(){
+  let max=0;
+  let leaders=[];
+
+  for(let p in votes){
+    if(votes[p]>max){
+      max=votes[p];
+      leaders=[p];
+    } else if(votes[p]===max && max>0){
+      leaders.push(p);
+    }
+  }
+
+  const screen=document.createElement("div");
+  screen.className="ejection";
+  screen.innerHTML=`<div id="ejectText"></div>
+  <span id="voteInfo"></span>
+  <button class="voteBtn" style="margin-top:40px" id="endMeetingBtn">END MEETING</button>`;
+  document.body.appendChild(screen);
+
+  const textEl=document.getElementById("ejectText");
+  const voteInfo=document.getElementById("voteInfo");
+
+  let winner=null;
+
+  if(max===0 || leaders.length>1){
+    typeWriter(textEl, `No one was ejected.`, 45);
+    voteInfo.innerText = max===0 ? "No votes cast" : `Tie vote between ${leaders.join(" & ")}`;
+  } else {
+    winner=leaders[0];
+    typeWriter(textEl, `${winner} was ejected.`, 45);
+    voteInfo.innerText = `${max} vote(s)`;
+  }
+
+  // Reset votes
+  for (let p in votes) votes[p] = 0;
+  localStorage.setItem("votes", JSON.stringify(votes));
+
+  document.getElementById("endMeetingBtn").onclick=()=>{
+    screen.remove();
+    if(winner) crossOutPlayer(winner);
+  };
+}
+
+function crossOutPlayer(name){
+  const cards=document.querySelectorAll(".player");
+  cards.forEach(card=>{
+    if(card.innerText===name){
+      card.style.textDecoration="line-through";
+      card.style.opacity="0.45";
+      card.style.filter="grayscale(70%)";
+      card.style.pointerEvents="none";
+    }
+  });
+}
+
+function typeWriter(element, text, speed = 40) {
+  element.textContent = "";
+  let i = 0;
+  function typing() {
+    if (i < text.length) {
+      element.textContent += text.charAt(i);
+      i++;
+      setTimeout(typing, speed);
+    }
+  }
+  typing();
+}
+</script>
+
+</body>
+</html>
