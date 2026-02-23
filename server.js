@@ -43,7 +43,6 @@ app.get('/ejected',(req,res)=>{
 });
 
 /* ---------- END MEETING / RESET ---------- */
-/* ---------- END MEETING / RESET ---------- */
 app.post('/reset',(req,res)=>{
   let max = 0;
   let leaders = [];
