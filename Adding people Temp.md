@@ -15,7 +15,7 @@ const colors=[
   {name:"ORANGE",color:"#EF7D0D"}
 ];
 </code>
-Add to end of list<br>
+Add to end of list
 <code>
 {name:"name",color:"random hex code"}
 </code>
