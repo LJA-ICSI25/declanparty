@@ -21,9 +21,11 @@ const colors=[
   {name:"PINK",color:"#EC0E63"},
   {name:"ORANGE",color:"#EF7D0D"}
 ];
+</code>
+<br>
+on server.js, change this section<br>
 <code>
-
-on server.js, change this section
 let votes = {
   RED:0, BLUE:0, GREEN:0, YELLOW:0, PINK:0, ORANGE:0
 };
+</code>
