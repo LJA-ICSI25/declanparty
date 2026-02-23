@@ -3,11 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Emergency Meeting</title>
+<title>Admin Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
 
 <style>
-/* ... (Keep all your existing CSS exactly as it is) ... */
 body{
   margin:0;
   font-family:'Orbitron',sans-serif;
@@ -135,14 +134,28 @@ h1{margin:0;font-size:32px;letter-spacing:2px}
   <button class="voteBtn" onclick="confirmImposters()">CONFIRM</button>
 </div>
 
+<!-- No Meeting Yet Overlay -->
+<div id="noMeetingOverlay" style="display:none;position:fixed;inset:0;z-index:3000;background:#117F2D;color:white;align-items:center;justify-content:center;flex-direction:column;font-family:'Orbitron',sans-serif;font-size:3vw;text-align:center;">
+  <div style="margin-bottom:40px;font-size:6vw;font-weight:bold;letter-spacing:2px;text-shadow:2px 2px 8px #000;">NO MEETING YET</div>
+  <button id="closeNoMeetingBtn" class="voteBtn" style="font-size:1.1vw;padding:8px 22px;">Close</button>
+</div>
+
 <div class="panel" id="mainPanel" style="display:none;">
   <h1>ADMIN DASHBOARD</h1>
   <div class="subtitle">Pick who to vote out or eliminate</div>
   <div class="players" id="players"></div>
   <div id="currentPick" style="margin:12px 0;font-size:18px;opacity:0.9"></div>
-  
+  <button class="voteBtn" id="emergencyBtn" style="margin-right:12px;">EMERGENCY MEETING</button>
+  <button class="voteBtn" id="noMeetingBtn" style="margin-right:12px;background:linear-gradient(#117F2D,#0a4d1a);border-color:#7eb37e;">NO MEETING YET</button>
   <button class="voteBtn" style="background: linear-gradient(#6b3d3d, #351a1a); border-color: #b37e7e;" onclick="killPlayer()">KILL PLAYER</button>
   <button class="voteBtn" onclick="endVoting()">FINISH PICKING</button>
+</div>
+
+<!-- Emergency Meeting Overlay -->
+<div id="emergencyOverlay" style="display:none;position:fixed;inset:0;z-index:3000;background:#C51111;color:white;align-items:center;justify-content:center;flex-direction:column;font-family:'Orbitron',sans-serif;font-size:3vw;text-align:center;">
+  <div style="margin-bottom:40px;font-size:6vw;font-weight:bold;letter-spacing:2px;text-shadow:2px 2px 8px #000;">EMERGENCY MEETING</div>
+  <div style="font-size:1.1vw;margin-bottom:24px;opacity:0.85;">Go to declan-party.local:3000 to vote</div>
+  <button id="startMeetingBtn" class="voteBtn" style="font-size:1.1vw;padding:8px 22px;">Start Meeting</button>
 </div>
 
 <script>
@@ -180,6 +193,41 @@ function confirmImposters(){
   localStorage.setItem("imposters", JSON.stringify(chosenImposters));
   document.getElementById("setupPanel").style.display="none";
   document.getElementById("mainPanel").style.display="block";
+}
+
+// Emergency Meeting logic
+const emergencyOverlay = document.getElementById("emergencyOverlay");
+const mainPanel = document.getElementById("mainPanel");
+const emergencyBtn = document.getElementById("emergencyBtn");
+if (emergencyBtn) {
+  emergencyBtn.onclick = () => {
+    emergencyOverlay.style.display = "flex";
+    mainPanel.style.display = "none";
+  };
+}
+const startMeetingBtn = document.getElementById("startMeetingBtn");
+if (startMeetingBtn) {
+  startMeetingBtn.onclick = () => {
+    emergencyOverlay.style.display = "none";
+    mainPanel.style.display = "block";
+  };
+}
+
+// No Meeting Yet logic
+const noMeetingOverlay = document.getElementById("noMeetingOverlay");
+const noMeetingBtn = document.getElementById("noMeetingBtn");
+const closeNoMeetingBtn = document.getElementById("closeNoMeetingBtn");
+if (noMeetingBtn) {
+  noMeetingBtn.onclick = () => {
+    noMeetingOverlay.style.display = "flex";
+    mainPanel.style.display = "none";
+  };
+}
+if (closeNoMeetingBtn) {
+  closeNoMeetingBtn.onclick = () => {
+    noMeetingOverlay.style.display = "none";
+    mainPanel.style.display = "block";
+  };
 }
 
 const container=document.getElementById("players");
