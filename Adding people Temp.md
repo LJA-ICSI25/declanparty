@@ -3,8 +3,8 @@ let votes = {
   RED:0, BLUE:0, GREEN:0, YELLOW:0, PINK:0, ORANGE:0
 };
 </code>
-add name:0 to end 
-
+add name:0 to end<br>
+<br>
 <code>
 const colors=[
   {name:"RED",color:"#C51111"},
