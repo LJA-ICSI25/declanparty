@@ -11,7 +11,7 @@ index is main page, allows connections to other pages<br>
 admin is admin dashboard, meant for display on larger screens<br>
 <br>
 Note to self:<br>
-To add players change add line to this section of script<br>
+To add players change add line to this section of script
 <code>
 const colors=[
   {name:"RED",color:"#C51111"},
@@ -23,7 +23,7 @@ const colors=[
 ];
 </code>
 <br>
-on server.js, change this section<br>
+on server.js, change this section
 <code>
 let votes = {
   RED:0, BLUE:0, GREEN:0, YELLOW:0, PINK:0, ORANGE:0
