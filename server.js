@@ -7,11 +7,11 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 /* ---------- GAME STATE ---------- */
-let votes = {
-  RED:0, BLUE:0, GREEN:0, YELLOW:0, PINK:0, ORANGE:0
-};
+// votes: dynamic map of player name -> vote count
+let votes = {};
 let round = 1;       // tracks meeting number
 let ejected = {};    // tracks who has been ejected
+
 
 /* ---------- PAGE ---------- */
 app.get('/', (req,res)=>{
@@ -20,10 +20,13 @@ app.get('/', (req,res)=>{
 
 /* ---------- VOTING ---------- */
 app.post('/vote',(req,res)=>{
-  const name=req.body.name;
-  if(votes[name]!==undefined){
-    votes[name]++;
+  const name = req.body.name;
+  if (!name) return res.json(votes);
+
+  if (votes[name] === undefined) {
+    votes[name] = 0;
   }
+  votes[name]++;
   res.json(votes);
 });
 
@@ -46,7 +49,6 @@ app.get('/ejected',(req,res)=>{
 app.post('/reset',(req,res)=>{
   let max = 0;
   let leaders = [];
-
   for(let p in votes){
     if(votes[p] > max){
       max = votes[p];
@@ -57,7 +59,6 @@ app.post('/reset',(req,res)=>{
   }
 
   let lastEjected = null;
-
   if(max > 0 && leaders.length === 1){
     lastEjected = leaders[0];
     ejected[lastEjected] = true;
@@ -72,9 +73,15 @@ app.post('/reset',(req,res)=>{
 /* ---------- HOST KILL / FORCE EJECT ---------- */
 app.post('/kill',(req,res)=>{
   const name = req.body.name;
-  if(votes[name] !== undefined){
-    ejected[name] = true;
+  if (!name) {
+    return res.json({round, ejected, lastEjected: null});
   }
+
+  // Mark this player as ejected even if they have never received votes before
+  if (votes[name] === undefined) {
+    votes[name] = 0;
+  }
+  ejected[name] = true;
   round++;
   for(let p in votes) votes[p] = 0;
   res.json({round, ejected, lastEjected: name});
