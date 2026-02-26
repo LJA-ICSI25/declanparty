@@ -26,33 +26,16 @@ body{
   background-repeat:repeat;
 }
 
-.starfield{
-  background-image:url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'>\
-<rect width='100%' height='100%' fill='black'/>\
-<circle cx='20' cy='40' r='1' fill='white'/>\
-<circle cx='80' cy='120' r='1' fill='white'/>\
-<circle cx='150' cy='60' r='1' fill='white'/>\
-<circle cx='200' cy='200' r='1' fill='white'/>\
-<circle cx='260' cy='80' r='1' fill='white'/>\
-<circle cx='120' cy='250' r='1' fill='white'/>\
-<circle cx='40' cy='200' r='1' fill='white'/>\
-</svg>");
-  animation:starMove 120s linear infinite;
-  opacity:.9;
+.starfield {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><rect width='100%' height='100%' fill='black'/><circle cx='20' cy='40' r='1' fill='white'/><circle cx='80' cy='120' r='1' fill='white'/><circle cx='150' cy='60' r='1' fill='white'/><circle cx='200' cy='200' r='1' fill='white'/><circle cx='260' cy='80' r='1' fill='white'/><circle cx='120' cy='250' r='1' fill='white'/><circle cx='40' cy='200' r='1' fill='white'/></svg>");
+  animation: starMove 120s linear infinite;
+  opacity: .9;
 }
 
-.starfield2{
-  background-image:url("data:image/svg+xml;utf8,\
-<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'>\
-<rect width='100%' height='100%' fill='black'/>\
-<circle cx='60' cy='90' r='2' fill='white'/>\
-<circle cx='300' cy='140' r='2' fill='white'/>\
-<circle cx='180' cy='300' r='2' fill='white'/>\
-<circle cx='350' cy='40' r='2' fill='white'/>\
-</svg>");
-  animation:starMove 220s linear infinite;
-  opacity:.5;
+.starfield2 {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><rect width='100%' height='100%' fill='black'/><circle cx='60' cy='90' r='2' fill='white'/><circle cx='300' cy='140' r='2' fill='white'/><circle cx='180' cy='300' r='2' fill='white'/><circle cx='350' cy='40' r='2' fill='white'/></svg>");
+  animation: starMove 220s linear infinite;
+  opacity: .5;
 }
 
 @keyframes starMove{
@@ -162,23 +145,32 @@ h1{margin:0;font-size:36px;letter-spacing:2px;}
   <h1>EMERGENCY MEETING</h1>
   <div class="subtitle">Who is the Impostor?</div>
   <div class="players" id="players"></div>
-  <button class="voteBtn" id="killBtn">Kill Player</button>
-  <button class="voteBtn" id="endBtn">End Voting</button>
+  <button class="voteBtn" id="showAdminBtn">Show Admin Controls</button>
+  <button class="voteBtn" id="killBtn" style="display:none;">Kill Player</button>
+  <button class="voteBtn" id="endBtn" style="display:none;">End Voting</button>
+  <button class="voteBtn" id="chooseImpostersBtn" style="display:none;">Choose Imposters</button>
+</div>
 </div>
 
 <script>
-const colors = [
-  {name:"RED",color:"#C51111"},
-  {name:"BLUE",color:"#132FD2"},
-  {name:"GREEN",color:"#117F2D"},
-  {name:"YELLOW",color:"#F5F557"},
-  {name:"PINK",color:"#EC0E63"},
-  {name:"ORANGE",color:"#EF7D0D"}
-];
+function getPlayers() {
+  const saved = localStorage.getItem('players');
+  if (saved) return JSON.parse(saved);
+  return [
+    {name:"RED",color:"#C51111"},
+    {name:"BLUE",color:"#132FD2"},
+    {name:"GREEN",color:"#117F2D"},
+    {name:"YELLOW",color:"#F5F557"},
+    {name:"PINK",color:"#EC0E63"},
+    {name:"ORANGE",color:"#EF7D0D"}
+  ];
+}
+
+let colors = getPlayers();
 
 const container = document.getElementById("players");
 let currentRound = 0;
-let hasVoted = false;
+// let hasVoted = false;
 
 /* ---------- INIT ROUND ---------- */
 async function initRound(){
@@ -188,43 +180,47 @@ async function initRound(){
 }
 initRound();
 
-/* ---------- CREATE PLAYER CARDS ---------- */
-colors.forEach(p=>{
-  const div=document.createElement("div");
-  div.className="player";
-  div.style.background=p.color;
-  div.innerText=p.name;
-  div.onclick=()=>vote(p.name);
-  container.appendChild(div);
-});
+/* ---------- CREATE / RENDER PLAYER CARDS ---------- */
+function renderPlayers() {
+  container.innerHTML = "";
+  colors.forEach(p=>{
+    const div=document.createElement("div");
+    div.className="player";
+    div.style.background=p.color;
+    div.innerText=p.name;
+    div.onclick=()=>vote(p.name);
+    container.appendChild(div);
+  });
+  // After re-render, re-apply any ejected state from the server
+  updateEjected();
+}
+
+renderPlayers();
 
 /* ---------- VOTE ---------- */
-async function vote(name){
-  if(hasVoted) return;
-  hasVoted = true;
 
+async function vote(name){
   await fetch("/vote",{
     method:"POST",
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({name})
   });
 
-  lockVotingUI();
-
+  // Show overlay with 'Next Player' button
   const overlay=document.createElement("div");
   overlay.className="overlay";
   overlay.id="waitScreen";
-  overlay.innerHTML=`<div class="popup">Vote submitted.<br><br>Waiting for host…</div>`;
+  overlay.innerHTML=`<div class="popup">Vote submitted.<br><br><button class='voteBtn' id='nextPlayerBtn'>Next Player</button></div>`;
   document.body.appendChild(overlay);
+  document.getElementById('nextPlayerBtn').onclick = () => {
+    overlay.remove();
+    unlockVotingUI();
+  };
 }
 
 function lockVotingUI(){
-  document.querySelectorAll(".player").forEach(card=>{
-    card.style.pointerEvents="none";
-    card.style.opacity="0.4";
-  });
+  // No longer used: voting is always enabled
 }
-
 function unlockVotingUI(){
   document.querySelectorAll(".player").forEach(card=>{
     if(!card.classList.contains("crossed")){
@@ -268,7 +264,6 @@ function showEjectionScreen(name){
 
   document.getElementById("endMeetingBtn").onclick = () => {
     screen.remove();
-    hasVoted = false;
     unlockVotingUI();
   };
 }
@@ -285,10 +280,8 @@ async function updateEjected(){
       card.style.opacity="0.45";
     } else {
       card.classList.remove("crossed");
-      if(!hasVoted){
-        card.style.pointerEvents="auto";
-        card.style.opacity="1";
-      }
+      card.style.pointerEvents="auto";
+      card.style.opacity="1";
     }
   });
 }
@@ -311,8 +304,43 @@ setInterval(async ()=>{
   updateEjected();
 }, 1500);
 
-/* ---------- KILL BUTTON: TYPE NAME & STRIKE ---------- */
-document.getElementById("killBtn").onclick = async () => {
+/* ---------- SYNC WITH ADMIN PAGE (LOCALSTORAGE PLAYERS) ---------- */
+window.addEventListener("storage", (event) => {
+  if (event.key === "players") {
+    // Reload player list from localStorage and re-render
+    colors = getPlayers();
+    renderPlayers();
+  }
+});
+
+/* ---------- ADMIN PASSWORD PROTECTION FOR KILL & END BUTTONS ---------- */
+const killBtn = document.getElementById("killBtn");
+const endBtn = document.getElementById("endBtn");
+const showAdminBtn = document.getElementById("showAdminBtn");
+const chooseImpostersBtn = document.getElementById("chooseImpostersBtn");
+const ADMIN_PASSWORD = "CyberKeco25?!"; //Admin Password
+
+showAdminBtn.onclick = () => {
+  const pw = prompt("Enter admin password:");
+  if (pw === ADMIN_PASSWORD) {
+    killBtn.style.display = "inline-block";
+    endBtn.style.display = "inline-block";
+    if (chooseImpostersBtn) {
+      chooseImpostersBtn.style.display = "inline-block";
+    }
+    showAdminBtn.style.display = "none";
+  } else if (pw !== null) {
+    alert("Incorrect password.");
+  }
+};
+
+if (chooseImpostersBtn) {
+  chooseImpostersBtn.onclick = () => {
+    window.location.href = "admin.html";
+  };
+}
+
+killBtn.onclick = async () => {
   const name = prompt("Enter player name to kill");
   if(!name) return;
 
