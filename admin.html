@@ -127,9 +127,15 @@ h1{margin:0;font-size:32px;letter-spacing:2px}
 <div class="starfield"></div>
 <div class="starfield2"></div>
 
+
 <div class="panel" id="setupPanel">
-  <h1>SELECT IMPOSTERS</h1>
-  <div class="subtitle">Pick up to 3 imposters</div>
+  <h1>PLAYER SETUP</h1>
+  <div class="subtitle">Add, remove, or edit players. Click player to select as Imposter</div>
+  <form id="addPlayerForm" style="margin-bottom:18px;display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;">
+    <input id="playerNameInput" type="text" placeholder="Name" maxlength="12" style="padding:8px 10px;border-radius:8px;border:1px solid #888;font-size:16px;width:120px;">
+    <input id="playerColorInput" type="color" value="#C51111" style="width:40px;height:40px;border:none;">
+    <button type="submit" class="voteBtn" style="margin:0;">Add Player</button>
+  </form>
   <div class="players" id="setupPlayers"></div>
   <button class="voteBtn" onclick="confirmImposters()">CONFIRM</button>
 </div>
@@ -148,46 +154,167 @@ h1{margin:0;font-size:32px;letter-spacing:2px}
   <button class="voteBtn" id="emergencyBtn" style="margin-right:12px;">EMERGENCY MEETING</button>
   <button class="voteBtn" id="noMeetingBtn" style="margin-right:12px;background:linear-gradient(#117F2D,#0a4d1a);border-color:#7eb37e;">NO MEETING YET</button>
   <button class="voteBtn" style="background: linear-gradient(#6b3d3d, #351a1a); border-color: #b37e7e;" onclick="killPlayer()">KILL PLAYER</button>
-  <button class="voteBtn" onclick="endVoting()">FINISH PICKING</button>
+  <button class="voteBtn" onclick="endVoting()">EJECT</button>
+  <div style="margin-top:18px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto;">
+  <h3 style="margin-bottom:6px;font-size:20px;">Ejection Log</h3>
+  <ul id="ejectionLog" style="background:#181c2a;padding:12px 18px;border-radius:10px;min-height:40px;"></ul>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+    <button class="voteBtn" id="undoEjectBtn">Undo Last Ejection</button>
+    <button class="voteBtn" onclick="clearEjectionLog()">Clear Ejection Log</button>
+  </div>
+  <button class="voteBtn" id="resetGameBtn" style="display:block; margin:12px auto 0 auto; background:linear-gradient(#3d6b4a,#1a3521); border-color:#7eb37e;">Reset Game</button>
+</div>
 </div>
 
 <!-- Emergency Meeting Overlay -->
 <div id="emergencyOverlay" style="display:none;position:fixed;inset:0;z-index:3000;background:#C51111;color:white;align-items:center;justify-content:center;flex-direction:column;font-family:'Orbitron',sans-serif;font-size:3vw;text-align:center;">
   <div style="margin-bottom:40px;font-size:6vw;font-weight:bold;letter-spacing:2px;text-shadow:2px 2px 8px #000;">EMERGENCY MEETING</div>
-  <div style="font-size:1.1vw;margin-bottom:24px;opacity:0.85;">Go to declan-party.local:3000 to vote</div>
   <button id="startMeetingBtn" class="voteBtn" style="font-size:1.1vw;padding:8px 22px;">Start Meeting</button>
 </div>
 
 <script>
-const colors=[
-  {name:"RED",color:"#C51111"},
-  {name:"BLUE",color:"#132FD2"},
-  {name:"GREEN",color:"#117F2D"},
-  {name:"YELLOW",color:"#F5F557"},
-  {name:"PINK",color:"#EC0E63"},
-  {name:"ORANGE",color:"#EF7D0D"}
-];
+// --- Ejection Log, Undo, and Reset ---
+function getEjectionLog() {
+  return JSON.parse(localStorage.getItem('ejectionLog') || '[]');
+}
+function saveEjectionLog(log) {
+  localStorage.setItem('ejectionLog', JSON.stringify(log));
+}
+function addEjectionToLog(name) {
+  const log = getEjectionLog();
+  log.push({name, time: new Date().toLocaleTimeString()});
+  saveEjectionLog(log);
+  renderEjectionLog();
+}
+function renderEjectionLog() {
+  const log = getEjectionLog();
+  const ul = document.getElementById('ejectionLog');
+  ul.innerHTML = log.length ? log.map(e => `<li>${e.name} <span style='font-size:12px;opacity:0.7;'>(${e.time})</span></li>`).join('') : '<li style="opacity:.6;">No ejections yet.</li>';
+}
+function undoLastEjection() {
+  let log = getEjectionLog();
+  if (!log.length) return;
+  const last = log.pop();
+  saveEjectionLog(log);
+  // Uncross player in UI
+  const cards=document.querySelectorAll("#players .player");
+  cards.forEach(card=>{
+    if(card.innerText===last.name){
+      card.style.textDecoration="none";
+      card.style.opacity="1";
+      card.style.filter="none";
+      card.style.pointerEvents="auto";
+    }
+  });
+  // Also remove from ejected in localStorage if tracked
+  let imposters = JSON.parse(localStorage.getItem("imposters") || "[]");
+  if (!imposters.includes(last.name)) {
+    // If not an imposter, just uncross
+    // Optionally, add back to imposters if needed
+  }
+  renderEjectionLog();
+}
+function resetGame() {
+  localStorage.removeItem('ejectionLog');
+  localStorage.removeItem('imposters');
+  location.reload();
+}
+document.getElementById('undoEjectBtn').onclick = undoLastEjection;
+document.getElementById('resetGameBtn').onclick = resetGame;
+renderEjectionLog();
 
+// --- Player List Customization ---
+function getPlayers() {
+  // Try to load from localStorage, else use default
+  const saved = localStorage.getItem('players');
+  if (saved) return JSON.parse(saved);
+  return [
+    {name:"RED",color:"#C51111"},
+    {name:"BLUE",color:"#132FD2"},
+    {name:"GREEN",color:"#117F2D"},
+    {name:"YELLOW",color:"#F5F557"},
+    {name:"PINK",color:"#EC0E63"},
+    {name:"ORANGE",color:"#EF7D0D"}
+  ];
+}
+function savePlayers(players) {
+  localStorage.setItem('players', JSON.stringify(players));
+}
+let players = getPlayers();
 let chosenImposters = [];
 const setupContainer = document.getElementById("setupPlayers");
 
-colors.forEach(p=>{
-  const div=document.createElement("div");
-  div.className="player";
-  div.style.background=p.color;
-  div.innerText=p.name;
-  div.onclick=()=>{
-    if(div.classList.contains("selected")){
-      div.classList.remove("selected");
-      chosenImposters = chosenImposters.filter(x=>x!==p.name);
-    } else {
-      if(chosenImposters.length >= 3) return;
-      div.classList.add("selected");
-      chosenImposters.push(p.name);
-    }
-  };
-  setupContainer.appendChild(div);
-});
+function renderSetupPlayers() {
+  setupContainer.innerHTML = '';
+  players.forEach((p, idx) => {
+    const div = document.createElement("div");
+    div.className = "player";
+    div.style.background = p.color;
+    div.innerText = p.name;
+    div.onclick = () => {
+      if(div.classList.contains("selected")){
+        div.classList.remove("selected");
+        chosenImposters = chosenImposters.filter(x=>x!==p.name);
+      } else {
+        if(chosenImposters.length >= 3) return;
+        div.classList.add("selected");
+        chosenImposters.push(p.name);
+      }
+    };
+    // Remove button
+    const removeBtn = document.createElement('button');
+    removeBtn.innerText = '✕';
+    removeBtn.title = 'Remove Player';
+    removeBtn.style.marginLeft = '8px';
+    removeBtn.style.background = '#222';
+    removeBtn.style.color = '#fff';
+    removeBtn.style.border = 'none';
+    removeBtn.style.borderRadius = '50%';
+    removeBtn.style.width = '24px';
+    removeBtn.style.height = '24px';
+    removeBtn.style.cursor = 'pointer';
+    removeBtn.onclick = (e) => {
+      e.stopPropagation();
+      players.splice(idx, 1);
+      savePlayers(players);
+      renderSetupPlayers();
+    };
+    div.appendChild(removeBtn);
+    setupContainer.appendChild(div);
+  });
+}
+
+renderSetupPlayers();
+
+document.getElementById('addPlayerForm').onsubmit = function(e) {
+  e.preventDefault();
+
+  const nameInput = document.getElementById('playerNameInput');
+  const colorInput = document.getElementById('playerColorInput');
+
+  const name = nameInput.value.trim().toUpperCase();
+  const color = colorInput.value;
+
+  if (!name) return;
+
+  // Prevent duplicates
+  if (players.find(p => p.name === name)) {
+    alert("Player already exists.");
+    return;
+  }
+
+  // Add player
+  players.push({name, color});
+  savePlayers(players);
+
+  // Re-render BOTH lists immediately
+  renderSetupPlayers();
+  renderVotingPlayers();
+
+  // Clear input fields
+  nameInput.value = "";
+  nameInput.focus();
+};
 
 function confirmImposters(){
   localStorage.setItem("imposters", JSON.stringify(chosenImposters));
@@ -230,17 +357,23 @@ if (closeNoMeetingBtn) {
   };
 }
 
+
 const container=document.getElementById("players");
 let picked = null;
 
-colors.forEach(p=>{
-  const div=document.createElement("div");
-  div.className="player";
-  div.style.background=p.color;
-  div.innerText=p.name;
-  div.onclick=()=>selectPlayer(p.name, div);
-  container.appendChild(div);
-});
+function renderVotingPlayers() {
+  container.innerHTML = '';
+  players.forEach(p => {
+    const div=document.createElement("div");
+    div.className="player";
+    div.style.background=p.color;
+    div.innerText=p.name;
+    div.onclick=()=>selectPlayer(p.name, div);
+    container.appendChild(div);
+  });
+}
+
+renderVotingPlayers();
 
 function selectPlayer(name, element){
   picked = name;
@@ -262,8 +395,8 @@ function killPlayer() {
     let feedbackNames = [];
 
     namesToKill.forEach(upper => {
-        // Find if the color exists in our initial list
-        const playerExists = colors.find(c => c.name === upper);
+        // Find if the player exists in our configured list
+        const playerExists = players.find(c => c.name === upper);
         
         if (!playerExists) {
             console.log(`Player ${upper} not found.`);
@@ -310,6 +443,11 @@ function killPlayer() {
     } else {
         alert("No valid or living players were named.");
     }
+}
+
+function clearEjectionLog() {
+  localStorage.removeItem('ejectionLog');
+  renderEjectionLog();
 }
 
 function endVoting(){
@@ -393,6 +531,7 @@ function crossOutPlayer(name){
       card.style.opacity="0.45";
       card.style.filter="grayscale(70%)";
       card.style.pointerEvents="none";
+      addEjectionToLog(name);
     }
   });
 }
