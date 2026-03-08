@@ -155,6 +155,7 @@ h1{margin:0;font-size:32px;letter-spacing:2px}
   <button class="voteBtn" id="noMeetingBtn" style="margin-right:12px;background:linear-gradient(#117F2D,#0a4d1a);border-color:#7eb37e;">NO MEETING YET</button>
   <button class="voteBtn" style="background: linear-gradient(#6b3d3d, #351a1a); border-color: #b37e7e;" onclick="killPlayer()">KILL PLAYER</button>
   <button class="voteBtn" onclick="endVoting()">EJECT</button>
+  <button class="voteBtn" id="showImpostersBtn" style="background:linear-gradient(#4a3d6b,#1a1535); border-color:#8b7eb3;">View Imposters</button>
   <div style="margin-top:18px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto;">
   <h3 style="margin-bottom:6px;font-size:20px;">Ejection Log</h3>
   <ul id="ejectionLog" style="background:#181c2a;padding:12px 18px;border-radius:10px;min-height:40px;"></ul>
@@ -383,45 +384,39 @@ function selectPlayer(name, element){
   if(pickEl) pickEl.innerText = `Selected: ${name}`;
 }
 
-// Logic for the Kill Button
 // Logic for the Kill Button (Supports multiple names separated by commas)
-function killPlayer() {
+async function killPlayer() {
     const input = prompt("Enter player name(s) to kill, separated by commas (e.g. RED, BLUE)");
     if (!input) return;
 
-    // Split the input by comma and clean up whitespace
     const namesToKill = input.split(',').map(name => name.trim().toUpperCase());
     let killedAny = false;
     let feedbackNames = [];
 
-    namesToKill.forEach(upper => {
-        // Find if the player exists in our configured list
+    for (const upper of namesToKill) {
         const playerExists = players.find(c => c.name === upper);
-        
-        if (!playerExists) {
-            console.log(`Player ${upper} not found.`);
-            return;
-        }
+        if (!playerExists) continue;
 
-        // Find the specific card in the DOM
         const playerDivs = document.querySelectorAll("#players .player");
         let targetDiv = null;
         playerDivs.forEach(d => { if (d.innerText === upper) targetDiv = d; });
 
-        // Only kill if they aren't already dead
         if (targetDiv && targetDiv.style.opacity !== "0.45") {
             crossOutPlayer(upper);
             feedbackNames.push(upper);
             killedAny = true;
 
-            // Update Imposter count in localStorage if an imposter was killed
+            try {
+                await fetch("/kill", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: upper }) });
+            } catch (e) {}
+
             let imposters = JSON.parse(localStorage.getItem("imposters") || "[]");
             if (imposters.includes(upper)) {
                 imposters = imposters.filter(x => x !== upper);
                 localStorage.setItem("imposters", JSON.stringify(imposters));
             }
         }
-    });
+    }
 
     if (killedAny) {
         const screen = document.createElement("div");
@@ -450,12 +445,23 @@ function clearEjectionLog() {
   renderEjectionLog();
 }
 
-function endVoting(){
+const ADMIN_PASSWORD = "CyberKeco25?!";
+
+document.getElementById("showImpostersBtn").onclick = function() {
+  const pw = prompt("Enter admin password:");
+  if (pw === ADMIN_PASSWORD) {
+    const imposters = JSON.parse(localStorage.getItem("imposters") || "[]");
+    const msg = imposters.length ? `Imposters: ${imposters.join(", ")}` : "No imposters set.";
+    alert(msg);
+  } else if (pw !== null) {
+    alert("Incorrect password.");
+  }
+};
+
+async function endVoting(){
   const screen=document.createElement("div");
   screen.className="ejection";
   screen.innerHTML=`<div id="ejectText"></div>
-  <span id="voteInfo"></span>
-  <div id="imposterCount" style="margin-top:18px; font-size:22px; opacity:0.85;"></div>
   <button class="voteBtn" style="margin-top:40px" id="endMeetingBtn">CONTINUE</button>`;
   document.body.appendChild(screen);
 
@@ -466,17 +472,16 @@ function endVoting(){
   if(!winner){
     typeWriter(textEl, `No one was ejected.`, 45);
   } else {
+    typeWriter(textEl, `${winner} was ejected.`, 45);
     if(imposters.includes(winner)){
-      typeWriter(textEl, `${winner} was the IMPOSTER.`, 45);
       imposters = imposters.filter(x => x !== winner);
       localStorage.setItem("imposters", JSON.stringify(imposters));
-    } else {
-      typeWriter(textEl, `${winner} was NOT the imposter.`, 45);
     }
     crossOutPlayer(winner);
+    try {
+      await fetch("/kill", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: winner }) });
+    } catch (e) {}
   }
-
-  document.getElementById("imposterCount").innerText = `Imposters Remaining: ${imposters.length}`;
 
   document.getElementById("endMeetingBtn").onclick = () => {
     screen.remove();
@@ -535,6 +540,27 @@ function crossOutPlayer(name){
     }
   });
 }
+
+function applyEjectedFromServer(){
+  fetch("/ejected").then(r=>r.json()).then(data=>{
+    document.querySelectorAll("#players .player").forEach(card=>{
+      const name = card.innerText.trim();
+      if(data[name]){
+        card.style.textDecoration="line-through";
+        card.style.opacity="0.45";
+        card.style.filter="grayscale(70%)";
+        card.style.pointerEvents="none";
+      } else {
+        card.style.textDecoration="none";
+        card.style.opacity="1";
+        card.style.filter="none";
+        card.style.pointerEvents="auto";
+      }
+    });
+  }).catch(()=>{});
+}
+
+setInterval(applyEjectedFromServer, 1500);
 
 function typeWriter(element, text, speed = 40) {
   element.textContent = "";
