@@ -113,7 +113,7 @@ function showEjectionScreen(name, skipped){
   const screen=document.createElement("div");
   screen.className="ejection";
   const isSkip=skipped||name==="SKIP";
-  const text=isSkip?"No one was voted out (Skipped).":(!name?"No one was ejected.":`${name} was ejected.`);
+  const text=isSkip?"No one was voted out (Skipped).":(!name?"No one was ejected. (Tie)":`${name} was ejected.`);
   screen.innerHTML=`<div id="ejectText"></div><button class="voteBtn" style="margin-top:40px" id="endMeetingBtn">END MEETING</button>`;
   document.body.appendChild(screen);
   typeWriter(document.getElementById("ejectText"), text, 45);
