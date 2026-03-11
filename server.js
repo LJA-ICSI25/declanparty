@@ -116,21 +116,12 @@ app.post('/full-reset',(req,res)=>{
 /* ---------- START SERVER ---------- */
 app.listen(PORT,'0.0.0.0',()=>{
   console.log(`Server running on port ${PORT}`);
-  const env = { ...process.env, PORT: String(PORT) };
+  const url = `http://localhost:${PORT}/vote-display.html`;
   const isWin = process.platform === 'win32';
   if (isWin) {
-    spawn('cmd', ['/c', 'start', 'cmd', '/k', 'node vote-display.js'], {
-      cwd: __dirname,
-      detached: true,
-      env,
-      stdio: 'ignore'
-    });
+    spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' });
   } else {
-    spawn(process.execPath, [path.join(__dirname, 'vote-display.js')], {
-      cwd: __dirname,
-      detached: true,
-      env,
-      stdio: 'ignore'
-    });
+    const opener = process.platform === 'darwin' ? 'open' : 'xdg-open';
+    spawn(opener, [url], { detached: true, stdio: 'ignore' });
   }
 });
