@@ -3,6 +3,7 @@
  * Launched automatically when the server starts. Clears and resets when each round ends.
  */
 const http = require('http');
+const readline = require('readline');
 
 const PORT = process.env.PORT || 3000;
 const BASE = `http://localhost:${PORT}`;
@@ -27,9 +28,6 @@ function fetch(path) {
 
 function render(votes, round) {
   lastRound = round;
-
-  // Clear and redraw display (shows 0 for all after round resets)
-  console.clear();
 
   // Build display: SKIP first, then all players with vote counts
   const lines = [];
@@ -67,6 +65,9 @@ function render(votes, round) {
   lines.push('  (Updates every second. Close this window anytime.)');
   lines.push('');
 
+  // Use readline for reliable cross-platform screen clear (works in Windows cmd)
+  readline.cursorTo(process.stdout, 0, 0);
+  readline.clearScreenDown(process.stdout);
   process.stdout.write(lines.join('\n'));
 }
 
@@ -86,8 +87,9 @@ async function poll() {
     const round = (roundRes && roundRes.round != null) ? roundRes.round : 1;
     render(votes, round);
   } catch (err) {
-    console.clear();
-    console.log('\n  Waiting for server... (make sure server is running on port ' + PORT + ')\n');
+    readline.cursorTo(process.stdout, 0, 0);
+    readline.clearScreenDown(process.stdout);
+    process.stdout.write('\n  Waiting for server... (make sure server is running on port ' + PORT + ')\n\n');
   }
 }
 
