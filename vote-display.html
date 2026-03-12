@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vote Display</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Orbitron', sans-serif;
+      background: black;
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      overflow: auto;
+    }
+
+    .starfield,
+    .starfield2 {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background-repeat: repeat;
+    }
+
+    .starfield {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><rect width='100%' height='100%' fill='black'/><circle cx='20' cy='40' r='1' fill='white'/><circle cx='80' cy='120' r='1' fill='white'/><circle cx='150' cy='60' r='1' fill='white'/><circle cx='200' cy='200' r='1' fill='white'/><circle cx='260' cy='80' r='1' fill='white'/><circle cx='120' cy='250' r='1' fill='white'/><circle cx='40' cy='200' r='1' fill='white'/></svg>");
+      animation: starMove 120s linear infinite;
+      opacity: 0.9;
+    }
+
+    .starfield2 {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><rect width='100%' height='100%' fill='black'/><circle cx='60' cy='90' r='2' fill='white'/><circle cx='300' cy='140' r='2' fill='white'/><circle cx='180' cy='300' r='2' fill='white'/><circle cx='350' cy='40' r='2' fill='white'/></svg>");
+      animation: starMove 220s linear infinite;
+      opacity: 0.5;
+    }
+
+    @keyframes starMove {
+      from { transform: translateY(0); }
+      to { transform: translateY(-1000px); }
+    }
+
+    .panel {
+      position: relative;
+      background: linear-gradient(#222a3d, #0f1422);
+      border: 4px solid #4c5a7a;
+      border-radius: 18px;
+      padding: 30px 40px 35px;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+      text-align: center;
+      max-width: 900px;
+      width: 100%;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 36px;
+      letter-spacing: 2px;
+    }
+
+    .subtitle {
+      opacity: 0.7;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+
+    .skipRow {
+      margin-bottom: 16px;
+    }
+
+    .skipRow .voteCard {
+      max-width: 200px;
+      margin: 0 auto;
+    }
+
+    .players {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .voteCard {
+      border-radius: 14px;
+      padding: 14px 20px;
+      border: 3px solid rgba(255, 255, 255, 0.25);
+      font-size: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 52px;
+    }
+
+    .voteCard.leader {
+      border-color: #ff4444;
+      box-shadow: 0 0 12px rgba(255, 68, 68, 0.5);
+    }
+
+    .voteCount {
+      font-weight: 700;
+      font-size: 18px;
+      opacity: 0.95;
+    }
+
+    .leading {
+      margin-top: 20px;
+      min-height: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .leadingBadge {
+      background: linear-gradient(135deg, #c51111, #8b0000);
+      border: 3px solid #ff4444;
+      border-radius: 14px;
+      padding: 16px 28px;
+      box-shadow: 0 0 24px rgba(255, 68, 68, 0.4);
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      letter-spacing: 2px;
+    }
+
+    .leadingBadge .label {
+      opacity: 0.9;
+      font-size: 14px;
+    }
+
+    .leadingBadge .name {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .leadingBadge .count {
+      font-size: 26px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .footer {
+      opacity: 0.5;
+      font-size: 12px;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="starfield"></div>
+  <div class="starfield2"></div>
+
+  <div class="panel">
+    <h1>EMERGENCY MEETING</h1>
+    <div class="subtitle" id="round">Round 1 · Live Vote Count</div>
+    <div class="skipRow" id="skipRow"></div>
+    <div class="players" id="votes"></div>
+    <div class="leading" id="leading"></div>
+    <div class="footer">Updates every second</div>
+  </div>
+
+  <script>
+    const COLOR_OVERRIDES = {
+      "Julian": "linear-gradient(90deg, #111111 0%, red 12%, orange 28%, yellow 44%, green 60%, blue 76%, purple 88%, #111111 100%)",
+      "Brayden": "#8B5CF6",
+      "Maytte": "#FFC0CB",
+      "Declan": "#000080",
+      "Lunden": "#800080",
+      "Ava p": "#C0708A"
+    };
+
+    async function poll() {
+      try {
+        const [playersRes, votesRes, roundRes] = await Promise.all([
+          fetch('/players'),
+          fetch('/votes'),
+          fetch('/round')
+        ]);
+
+        const players = await playersRes.json();
+        const votes = await votesRes.json() || {};
+        const round = await roundRes.json();
+        const r = round.round != null ? round.round : 1;
+
+        document.getElementById('round').textContent = `Round ${r} · Live Vote Count`;
+
+        let maxVotes = 0;
+        const arrRaw = Array.isArray(players) ? players : [];
+        const arr = arrRaw.map(p =>
+          typeof p === 'object'
+            ? { ...p, color: COLOR_OVERRIDES[p.name] || p.color }
+            : p
+        );
+        for (const p of arr) {
+          const name = typeof p === 'object' ? p.name : p;
+          const c = votes[name] || 0;
+          if (c > maxVotes) maxVotes = c;
+        }
+        const skipCount = votes['SKIP'] || 0;
+        if (skipCount > maxVotes) maxVotes = skipCount;
+
+        const leaders = new Set();
+        if (skipCount === maxVotes && maxVotes >= 1) leaders.add('SKIP');
+        for (const p of arr) {
+          const name = typeof p === 'object' ? p.name : p;
+          if ((votes[name] || 0) === maxVotes && maxVotes >= 1) leaders.add(name);
+        }
+
+        const skipCard = {
+          name: 'SKIP',
+          count: skipCount,
+          color: '#C51111',
+          lead: leaders.has('SKIP')
+        };
+        const cls = skipCard.lead ? 'voteCard leader' : 'voteCard';
+        document.getElementById('skipRow').innerHTML =
+          `<div class="${cls}" style="background:${skipCard.color}"><span>${skipCard.name}</span><span class="voteCount">${skipCard.count}</span></div>`;
+
+        let html = '';
+        for (const p of arr) {
+          const name = typeof p === 'object' ? p.name : p;
+          const color = typeof p === 'object' && p.color ? p.color : '#4c5a7a';
+          const count = votes[name] || 0;
+          const lead = leaders.has(name);
+          const c = lead ? 'voteCard leader' : 'voteCard';
+          html += `<div class="${c}" style="background:${color}"><span>${name}</span><span class="voteCount">${count}</span></div>`;
+        }
+        document.getElementById('votes').innerHTML = html;
+
+        const leaderNames = [...leaders];
+        let leadHtml = '';
+        if (maxVotes >= 1) {
+          leaderNames.forEach(n => {
+            const p = arr.find(x => (typeof x === 'object' ? x.name : x) === n);
+            const col = n === 'SKIP' ? '#C51111' : (p && p.color) ? p.color : '#ff4444';
+            leadHtml += `<div class="leadingBadge" style="background:linear-gradient(135deg,${col},#6b0000);border-color:${col};box-shadow:0 0 24px ${col}66"><span class="label">LEADING</span><span class="name">${n}</span><span class="count">${maxVotes}</span></div>`;
+          });
+        }
+        document.getElementById('leading').innerHTML = leadHtml;
+      } catch (e) {
+        document.getElementById('round').textContent = 'Waiting for server...';
+        document.getElementById('skipRow').innerHTML = '';
+        document.getElementById('votes').innerHTML =
+          '<div class="voteCard" style="background:#2a3550;grid-column:1/-1">Make sure the server is running on port 3000.</div>';
+        document.getElementById('leading').textContent = '';
+      }
+    }
+
+    poll();
+    setInterval(poll, 1000);
+  </script>
+</body>
+</html>
